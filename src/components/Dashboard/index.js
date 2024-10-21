@@ -89,7 +89,7 @@ function BasicModal({ open, handleClose, fetchCustomers }) {
 
     try {
       const response = await fetch(
-        "http://localhost:3000/api/customer/customers",
+        "https://web-pwa.onrender.com/api/customer/customers",
         {
           method: "POST",
           headers: {
