@@ -12,6 +12,17 @@ export const getAllCustomers = async () => {
   }
 };
 
+export const getCustomerCount = async () => {
+  try {
+    const pool = await connectToDatabase();
+    const result = await pool.request().query("SELECT COUNT(*) AS total FROM Customers");
+    return result.recordset[0].total; // Retornamos el valor de la columna "total"
+  } catch (error) {
+    console.error("Error fetching customer count:", error);
+    throw error;
+  }
+};
+
 export const getCustomerById = async (id) => {
   try {
     const pool = await connectToDatabase();

@@ -1,14 +1,14 @@
 import sql from "mssql";
 
 const dbConfig = {
-  user: "sa",
-  password: "serverroot659",
-  server: "RODRIGOMORENO",
-  database: "Prac_PWA",
+  user: "db_aafce3_rodrigomoreno_admin",
+  password: "server123",
+  server: "SQL9001.site4now.net",
+  database: "db_aafce3_rodrigomoreno",
   port: 1433,
   options: {
     encrypt: true, // Si se usa azure poner true
-    trustServerCertificate: true, // En entornos de producción
+    trustServerCertificate: false, // En entornos de producción
   },
 };
 

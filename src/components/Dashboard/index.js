@@ -1,7 +1,8 @@
 import IconButton from "@mui/material/IconButton";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import { Box, Typography } from "@mui/material";
+import { Badge, Box, Typography } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 import { AppProvider } from "@toolpad/core/AppProvider";
 import { DashboardLayout } from "@toolpad/core/DashboardLayout";
 import * as React from "react";
@@ -75,9 +76,13 @@ const style = {
 };
 
 const useOnlineStatus = () => {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(
+    typeof window !== "undefined" && navigator.onLine
+  );
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
@@ -98,37 +103,44 @@ function BasicModal({ open, handleClose, fetchCustomers }) {
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [address, setAddress] = React.useState("");
+  const isOnline = useOnlineStatus();
 
   const handleSubmit = async () => {
-    const customerData = {
-      name,
-      email,
-      phone,
-      address,
-    };
+    const customerData = { name, email, phone, address };
 
-    try {
-      const response = await fetch(
-        "http://localhost:3000/api/customer/customers",
-        {
+    if (isOnline) {
+      try {
+        const response = await fetch("/api/customer/customers", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(customerData),
-        }
-      );
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        fetchCustomers();
-        handleClose();
-        toast.success("Cliente creado con exito");
-      } else {
-        throw new Error("Error al crear el cliente");
+        if (response.ok) {
+          const data = await response.json();
+          fetchCustomers();
+          handleClose();
+          toast.success("Cliente creado con éxito");
+        } else {
+          throw new Error("Error al crear el cliente");
+        }
+      } catch (error) {
+        toast.error(error.message);
       }
-    } catch (error) {
-      toast.error(error.message);
+    } else {
+      // Guardar en localStorage si está offline
+      const offlineCustomers =
+        JSON.parse(localStorage.getItem("offline_customers")) || [];
+      offlineCustomers.push({ ...customerData, id: Date.now(), offline: true });
+      localStorage.setItem(
+        "offline_customers",
+        JSON.stringify(offlineCustomers)
+      );
+      fetchCustomers(); // Actualiza la lista con los datos offline
+      handleClose();
+      toast.success(
+        "Cliente guardado localmente. Sincronizará al estar en línea."
+      );
     }
   };
 
@@ -199,40 +211,87 @@ const ExpandedComponent = ({ data, onDeleteSuccess, fetchCustomers }) => {
   const [email, setEmail] = useState(data.email);
   const [phone, setPhone] = useState(data.phone);
   const [address, setAddress] = useState(data.phone);
+  const isOnline = useOnlineStatus();
 
   const handleDelete = async () => {
-    try {
-      const response = await fetch(`/api/customer/${data.id}`, {
-        method: "DELETE",
-      });
+    if (isOnline) {
+      try {
+        const response = await fetch(`/api/customer/${data.id}`, {
+          method: "DELETE",
+        });
 
-      if (response.ok) {
-        console.log("Cliente eliminado"); // Actualiza la lista de clientes
-        onDeleteSuccess(); // Llama a la función para recargar la lista
-      } else {
-        console.error("Error al eliminar el cliente:", response.statusText);
+        if (response.ok) {
+          toast.success("Cliente eliminado con éxito");
+          onDeleteSuccess();
+        } else {
+          throw new Error("Error al eliminar el cliente");
+        }
+      } catch (error) {
+        toast.error(error.message);
       }
-    } catch (error) {
-      console.error("Error al hacer la solicitud de eliminación:", error);
+    } else {
+      // Eliminación offline
+      const offlineCustomers =
+        JSON.parse(localStorage.getItem("offline_customers")) || [];
+
+      const filteredOfflineCustomers = offlineCustomers.filter(
+        (customer) => customer.id !== data.id
+      );
+
+      localStorage.setItem(
+        "offline_customers",
+        JSON.stringify(filteredOfflineCustomers)
+      );
+
+      toast.success(
+        "Cliente eliminado localmente. Sincronizará al estar en línea."
+      );
+      onDeleteSuccess();
     }
   };
 
   const handleEdit = async () => {
-    try {
-      const response = await fetch(`/api/customer/${data.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name, email, phone, address }),
-      });
-      if (response.ok) {
-        console.log("Cliente actualizado"); // Actualiza la lista de clientes
-        fetchCustomers(); // Llama a la función para recargar la lista
-      } else {
-        console.error("Error al actualizar el cliente:", response.statusText);
+    const updatedCustomer = { id: data.id, name, email, phone, address };
+
+    if (isOnline) {
+      try {
+        const response = await fetch(`/api/customer/${data.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updatedCustomer),
+        });
+
+        if (response.ok) {
+          toast.success("Cliente actualizado con éxito");
+          fetchCustomers();
+        } else {
+          throw new Error("Error al actualizar el cliente");
+        }
+      } catch (error) {
+        toast.error(error.message);
       }
-    } catch (error) {}
+    } else {
+      // Actualización offline
+      const offlineCustomers =
+        JSON.parse(localStorage.getItem("offline_customers")) || [];
+
+      const updatedOfflineCustomers = offlineCustomers.map((customer) =>
+        customer.id === data.id ? { ...customer, ...updatedCustomer } : customer
+      );
+
+      localStorage.setItem(
+        "offline_customers",
+        JSON.stringify(updatedOfflineCustomers)
+      );
+
+      toast.success(
+        "Cliente actualizado localmente. Sincronizará al estar en línea."
+      );
+
+      fetchCustomers();
+    }
   };
 
   return (
@@ -295,23 +354,51 @@ function DemoPageContent({ pathname }) {
   const isOnline = useOnlineStatus();
 
   const fetchCustomers = async () => {
-    try {
-      const response = await fetch("/api/customer/customers");
-      if (!response.ok) {
-        throw new Error("Error al obtener los datos");
+    if (isOnline) {
+      try {
+        const response = await fetch("/api/customer/customers");
+        if (!response.ok) throw new Error("Error al obtener los datos");
+        const data = await response.json();
+        setCustomers(data);
+      } catch (error) {
+        setError(error.message);
       }
-      const data = await response.json();
-      setCustomers(data);
-      setLoading(false);
-    } catch (error) {
-      setError(error.message);
-      setLoading(false);
+    } else {
+      const offlineCustomers =
+        JSON.parse(localStorage.getItem("offline_customers")) || [];
+      setCustomers(offlineCustomers);
     }
+    setLoading(false);
   };
 
   useEffect(() => {
     fetchCustomers();
-  }, []);
+  }, [isOnline]);
+
+  useEffect(() => {
+    if (isOnline) {
+      const syncOfflineData = async () => {
+        const offlineCustomers =
+          JSON.parse(localStorage.getItem("offline_customers")) || [];
+        for (const customer of offlineCustomers) {
+          try {
+            await fetch("/api/customer/customers", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(customer),
+            });
+          } catch {
+            console.error("Error al sincronizar cliente:", customer);
+          }
+        }
+        // limpiar el localstorage guardado en el almacenamiento
+        localStorage.removeItem("offline_customers");
+        fetchCustomers();
+      };
+
+      syncOfflineData();
+    }
+  }, [isOnline]);
 
   // Mostrar notificación cada vez que cambie el estado de conexión
   useEffect(() => {
@@ -339,12 +426,11 @@ function DemoPageContent({ pathname }) {
     fetchCustomers();
     setExpandedRow(null);
   };
-  
 
   return (
     <Box
       sx={{
-        py: 4,
+        py: 3,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -430,6 +516,62 @@ function Search() {
   );
 }
 
+function notification() {
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  // Función para obtener el conteo de notificaciones desde la API
+  const fetchNotificationCount = async () => {
+    try {
+      const response = await fetch("/api/customer/count");
+      if (response.ok) {
+        const data = await response.json();
+        setNotificationCount(data.total); // Actualiza el estado con el nuevo conteo
+      } else {
+        console.error(
+          "Error fetching notification count:",
+          response.statusText
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching notification count:", error);
+    }
+  };
+
+  // Llama a la API para obtener el conteo de notificaciones cuando el componente se monta
+  useEffect(() => {
+    fetchNotificationCount();
+  }, []);
+
+  // Manejo del click para recargar el conteo
+  const handleClick = () => {
+    fetchNotificationCount(); // Vuelve a llamar la función de fetch para actualizar el conteo
+  };
+
+  return (
+    <React.Fragment>
+      <div style={{ padding: "8px" }}>
+        <Tooltip title="Clientes sincronizados" arrow>
+          <Badge
+            badgeContent={notificationCount}
+            color="primary"
+            sx={{
+              "& .MuiBadge-badge": {
+                backgroundColor: "red", // Color del badge
+                color: "#fff", // Color del texto
+              },
+            }}
+          >
+            <NotificationsIcon
+              sx={{ color: "var(--mui-palette-primary-dark)" }}
+              onClick={handleClick} // Agrega el manejador de clic
+            />
+          </Badge>
+        </Tooltip>
+      </div>
+    </React.Fragment>
+  );
+}
+
 function DashboardLayoutSlots(props) {
   const { window } = props;
 
@@ -453,7 +595,7 @@ function DashboardLayoutSlots(props) {
       theme={demoTheme}
       window={demoWindow}
     >
-      <DashboardLayout slots={{ toolbarActions: Search }}>
+      <DashboardLayout slots={{ toolbarActions: notification }}>
         <DemoPageContent pathname={pathname} />
       </DashboardLayout>
     </AppProvider>
