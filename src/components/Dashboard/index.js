@@ -516,7 +516,7 @@ function Search() {
   );
 }
 
-function notification() {
+function Notification() {
   const [notificationCount, setNotificationCount] = useState(0);
 
   // Función para obtener el conteo de notificaciones desde la API
@@ -595,7 +595,7 @@ function DashboardLayoutSlots(props) {
       theme={demoTheme}
       window={demoWindow}
     >
-      <DashboardLayout slots={{ toolbarActions: notification }}>
+      <DashboardLayout slots={{ toolbarActions: Notification }}>
         <DemoPageContent pathname={pathname} />
       </DashboardLayout>
     </AppProvider>
