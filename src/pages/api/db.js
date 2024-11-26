@@ -1,14 +1,14 @@
 import sql from "mssql";
 
 const dbConfig = {
-  user: "rodrigo", // Cambia esto al usuario adecuado
-  password: "Serverroot659.", // Cambia esto por la contraseña adecuada
-  server: "black-raven.database.windows.net",
-  database: "ROD-PWA",
+  user: "sa",
+  password: "serverroot659",
+  server: "RODRIGOMORENO",
+  database: "Prac_PWA",
   port: 1433,
   options: {
-    encrypt: true, // Asegúrate de que esté en true cuando te conectes a Azure SQL
-    trustServerCertificate: false, // En entornos de producción se recomienda usar false
+    encrypt: true, // Si se usa azure poner true
+    trustServerCertificate: true, // En entornos de producción
   },
 };
 

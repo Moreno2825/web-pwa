@@ -15,6 +15,7 @@ import BasicTextField from "../BasicTextField";
 import CustomButton from "../CustomButton";
 import Modal from "@mui/material/Modal";
 import Button from "@mui/material/Button";
+import { Toaster, toast } from "alert";
 
 const NAVIGATION = [
   {
@@ -73,6 +74,25 @@ const style = {
   p: 4,
 };
 
+const useOnlineStatus = () => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  return isOnline;
+};
+
 function BasicModal({ open, handleClose, fetchCustomers }) {
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -89,7 +109,7 @@ function BasicModal({ open, handleClose, fetchCustomers }) {
 
     try {
       const response = await fetch(
-        "https://web-pwa.onrender.com/api/customer/customers",
+        "http://localhost:3000/api/customer/customers",
         {
           method: "POST",
           headers: {
@@ -101,18 +121,20 @@ function BasicModal({ open, handleClose, fetchCustomers }) {
 
       if (response.ok) {
         const data = await response.json();
-        fetchCustomers(); // Llama a la función para actualizar la lista de clientes.
+        fetchCustomers();
         handleClose();
+        toast.success("Cliente creado con exito");
       } else {
         throw new Error("Error al crear el cliente");
       }
     } catch (error) {
-      console.error(error);
+      toast.error(error.message);
     }
   };
 
   return (
     <div>
+      <Toaster />
       <Modal
         open={open}
         onClose={handleClose}
@@ -270,6 +292,7 @@ function DemoPageContent({ pathname }) {
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null); // Nuevo estado para controlar la fila expandida
+  const isOnline = useOnlineStatus();
 
   const fetchCustomers = async () => {
     try {
@@ -290,6 +313,17 @@ function DemoPageContent({ pathname }) {
     fetchCustomers();
   }, []);
 
+  // Mostrar notificación cada vez que cambie el estado de conexión
+  useEffect(() => {
+    toast(isOnline ? "Estás en línea" : "Estás sin conexión", {
+      icon: isOnline ? "✅" : "⚠️",
+      style: {
+        backgroundColor: isOnline ? "#4caf50" : "#f44336", // Verde para online, rojo para offline
+        color: "white",
+      },
+    });
+  }, [isOnline]);
+
   if (loading) return <Typography>Cargando...</Typography>;
   if (error) return <Typography>Error: {error}</Typography>;
 
@@ -305,6 +339,7 @@ function DemoPageContent({ pathname }) {
     fetchCustomers();
     setExpandedRow(null);
   };
+  
 
   return (
     <Box
